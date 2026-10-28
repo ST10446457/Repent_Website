@@ -1,19 +1,42 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
-- main
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: 'ubuntu-latest'
 
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+- checkout: self
+  displayName: 'Checkout REPENT website'
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+- bash: |
+    set -euo pipefail
+    php --version
+    find . -type f -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -r -n1 php -l
+  displayName: 'Validate PHP syntax across website'
+
+- bash: |
+    set -euo pipefail
+    php tests/auth_smoke.php
+  displayName: 'Run authentication unit checks'
+
+- task: ArchiveFiles@2
+  displayName: 'Package website'
+  inputs:
+    rootFolderOrFile: '$(Build.SourcesDirectory)'
+    includeRootFolder: false
+    archiveType: zip
+    archiveFile: '$(Build.ArtifactStagingDirectory)/repent-website.zip'
+    replaceExistingArchive: true
+
+- task: PublishPipelineArtifact@1
+  displayName: 'Publish website artifact'
+  inputs:
+    targetPath: '$(Build.ArtifactStagingDirectory)/repent-website.zip'
+    artifact: 'REPENT-website'
