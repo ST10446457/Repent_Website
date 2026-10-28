@@ -1,108 +1,58 @@
 <?php
-/**
- * ============================================================
- * REPENT† — Checkout & Order Processing Page
- * File: pages/checkout.php
- *
- * PURPOSE: Collects shipping/payment details and finalises 
- * the customer purchase. Handles both actual database insertions
- * and local session demo-fallbacks for presentation mode.
- * ============================================================
- */
-
-require_once '../includes/header.php';
-require_once '../includes/db.php';
-
-// Force authentication — you must have an account to check out
+require_once '../includes/auth.php';
+require_once '../includes/firebase.php';
 requireLogin('cart');
-
-// If the cart is empty, send them back to the shop
-if (!isset($_SESSION['cart']) || empty($_SESSION['cart'])) {
-    header("Location: shop.php");
-    exit();
-}
-
-// Calculate financial figures
+if (empty($_SESSION['cart'])) { header('Location: shop.php'); exit(); }
 $subtotal = 0;
-foreach ($_SESSION['cart'] as $item) {
-    $subtotal += (float)($item['price'] * $item['qty']);
-}
-$shipping   = ($subtotal >= 800) ? 0 : 95; // R95 flat rate below R800
+foreach ($_SESSION['cart'] as $item) $subtotal += (float)($item['price'] * $item['qty']);
+$shipping = $subtotal >= 800 ? 0 : 95;
 $grandTotal = $subtotal + $shipping;
-
-$errors     = [];
-$success    = false;
-$orderId    = null;
-
-// Handle form submission
+$errors = [];
+$success = false;
+$orderId = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $address  = trim($_POST['address'] ?? '');
-    $city     = trim($_POST['city'] ?? '');
-    $zip      = trim($_POST['zip'] ?? '');
-    $phone    = trim($_POST['phone'] ?? '');
-    $payment  = $_POST['payment_method'] ?? 'eft';
-
-    // Server-side validation
-    if (empty($address)) $errors[] = "Delivery address is required.";
-    if (empty($city))    $errors[] = "City / Town is required.";
-    if (empty($zip))     $errors[] = "Postal code is required.";
-    if (empty($phone))   $errors[] = "A contact telephone number is required.";
-
-    if (empty($errors)) {
-        $user = getCurrentUser();
-        $userId = $user['id'] ?? 0;
-        
-        // Formatted address block
-        $fullShippingAddress = $address . ", " . $city . ", " . $zip;
-
-        if ($conn) {
-            // ============================================================
-            // REAL DATABASE WORK
-            // ============================================================
-            $conn->begin_transaction();
-
-            try {
-                // 1. Insert into orders table
-                $stmt = $conn->prepare("INSERT INTO orders (user_id, total_amount, shipping_address, status, created_at) VALUES (?, ?, ?, 'Processing', NOW())");
-                $stmt->bind_param("ids", $userId, $grandTotal, $fullShippingAddress);
-                $stmt->execute();
-                $insertedOrderId = $conn->insert_id;
-
-                // 2. Insert order details/items
-                $itemStmt = $conn->prepare("INSERT INTO order_items (order_id, product_id, product_name, quantity, price) VALUES (?, ?, ?, ?, ?)");
-                
-                foreach ($_SESSION['cart'] as $productId => $item) {
-                    $pName  = $item['name'];
-                    $pQty   = (int)$item['qty'];
-                    $pPrice = (float)$item['price'];
-
-                    $itemStmt->bind_param("iisid", $insertedOrderId, $productId, $pName, $pQty, $pPrice);
-                    $itemStmt->execute();
-                }
-
-                $conn->commit();
-                $orderId = "#" . (1000 + $insertedOrderId);
-                $success = true;
-
-            } catch (Exception $e) {
-                $conn->rollback();
-                $errors[] = "Could not process order in database. Details: " . $e->getMessage();
+    $address = trim($_POST['address'] ?? '');
+    $city = trim($_POST['city'] ?? '');
+    $zip = trim($_POST['zip'] ?? '');
+    $phone = trim($_POST['phone'] ?? '');
+    $payment = $_POST['payment_method'] ?? 'eft';
+    if (!$address) $errors[] = 'Delivery address is required.';
+    if (!$city) $errors[] = 'City / Town is required.';
+    if (!$zip) $errors[] = 'Postal code is required.';
+    if (!$phone) $errors[] = 'A contact telephone number is required.';
+    if (!$errors) {
+        try {
+            $items = [];
+            foreach ($_SESSION['cart'] as $pid => $item) {
+                $items[] = [
+                    'productId' => (int)$pid,
+                    'productName' => (string)$item['name'],
+                    'price' => (float)$item['price'],
+                    'quantity' => (int)$item['qty'],
+                ];
             }
-
-        } else {
-            // ============================================================
-            // PRESENTATION / DEMO MODE FALLBACK
-            // ============================================================
-            $orderId = "#REP-" . strtoupper(substr(md5(uniqid()), 0, 5));
+            $orderNumber = random_int(100000000, 999999999);
+            firestoreWrite('orders', [
+                'userId' => (string)$_SESSION['user_id'],
+                'orderNumber' => $orderNumber,
+                'items' => $items,
+                'subtotal' => (float)$subtotal,
+                'shipping' => (float)$shipping,
+                'total' => (float)$grandTotal,
+                'shippingAddress' => $address,
+                'city' => $city, 'postalCode' => $zip, 'phone' => $phone,
+                'paymentMethod' => $payment, 'status' => 'pending',
+                'createdAt' => gmdate('Y-m-d\TH:i:s\Z'),
+            ]);
+            $orderId = '#' . $orderNumber;
             $success = true;
-        }
-
-        // Clean out the shopping cart upon absolute transaction completion
-        if ($success) {
             unset($_SESSION['cart']);
+        } catch (Throwable $e) {
+            $errors[] = firebaseFriendlyError($e);
         }
     }
 }
+require_once '../includes/header.php';
 ?>
 
 <div class="container" style="padding: 60px 20px; min-height: 70vh;">
@@ -112,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div style="font-size: 64px; color: var(--gold); margin-bottom: 20px;">✝</div>
             <h1 style="font-family: var(--font-display); font-size: 32px; margin-bottom: 12px;">Thank You for Your Order!</h1>
             <p style="color: var(--gray); font-size: 16px; margin-bottom: 24px;">
-                Your order <strong style="color: var(--black);"><?= $orderId ?></strong> has been successfully placed. A confirmation email with transaction particulars has been dispatched.
+                Your order <strong style="color: var(--black);"><?= $orderId ?></strong> has been successfully placed. This is an order request. No payment has been collected.
             </p>
             <div style="background: var(--off-white); padding: 16px; border-radius: var(--radius); font-size: 14px; text-align: left; margin-bottom: 32px; border-left: 3px solid var(--gold);">
                 <strong>What's Next?</strong><br>
