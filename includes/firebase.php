@@ -17,7 +17,15 @@ function firebaseRequest(string $url, string $method = 'POST', ?array $payload =
         CURLOPT_CONNECTTIMEOUT => 8, CURLOPT_TIMEOUT => 20,
         CURLOPT_HTTPHEADER => $headers,
     ]);
-    if ($payload !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload, JSON_THROW_ON_ERROR));
+    if ($payload !== null) {
+        if (strpos($url, 'securetoken.googleapis.com') !== false) {
+            $headers[1] = 'Content-Type: application/x-www-form-urlencoded';
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($payload));
+        } else {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload, JSON_THROW_ON_ERROR));
+        }
+    }
     $body = curl_exec($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $error = curl_error($ch);
@@ -67,14 +75,18 @@ function firestoreValue($value): array {
     if (is_int($value)) return ['integerValue' => (string)$value];
     if (is_float($value)) return ['doubleValue' => $value];
     if (is_array($value)) {
-        if (array_is_list($value)) return ['arrayValue' => ['values' => array_map('firestoreValue', $value)]];
+        if ($value === [] || array_keys($value) === range(0, count($value) - 1)) return ['arrayValue' => ['values' => array_map('firestoreValue', $value)]];
         return ['mapValue' => ['fields' => firestoreFields($value)]];
     }
     return ['stringValue' => (string)$value];
 }
 function firestoreFields(array $values): array {
     $fields = [];
-    foreach ($values as $key => $value) $fields[$key] = firestoreValue($value);
+    foreach ($values as $key => $value) {
+        $fields[$key] = in_array($key, ['createdAt', 'submittedAt', 'subscribedAt'], true)
+            ? ['timestampValue' => gmdate('Y-m-d\\TH:i:s\\Z')]
+            : firestoreValue($value);
+    }
     return $fields;
 }
 function firestoreWrite(string $collection, array $data, ?string $documentId = null): array {
