@@ -1,38 +1,28 @@
 <?php
-require_once '../includes/header.php';
-require_once '../includes/db.php';
-
+require_once '../includes/auth.php';
+require_once '../includes/firebase.php';
 $success = '';
-$errors  = [];
-
+$errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name      = trim($_POST['name']      ?? '');
-    $email     = trim($_POST['email']     ?? '');
-    $frequency = $_POST['frequency']      ?? 'weekly';
-
-    if (empty($name))  $errors[] = "Your name is required.";
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "A valid email address is required.";
-
-    if (empty($errors)) {
-        if ($conn) {
-            // Check for duplicate
-            $check = $conn->prepare("SELECT id FROM newsletter_subscribers WHERE email = ?");
-            $check->bind_param("s", $email);
-            $check->execute();
-            $check->store_result();
-            if ($check->num_rows > 0) {
-                $success = "already";
-            } else {
-                $stmt = $conn->prepare("INSERT INTO newsletter_subscribers (name, email, frequency, subscribed_at) VALUES (?,?,?,NOW())");
-                $stmt->bind_param("sss", $name, $email, $frequency);
-                $success = $stmt->execute() ? "subscribed" : "";
-                if (!$success) $errors[] = "Subscription failed. Please try again.";
-            }
-        } else {
-            $success = "subscribed"; // Demo mode
-        }
+    $name = trim($_POST['name'] ?? '');
+    $email = strtolower(trim($_POST['email'] ?? ''));
+    $frequency = $_POST['frequency'] ?? 'weekly';
+    if (!$name) $errors[] = 'Your name is required.';
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'A valid email address is required.';
+    if (!in_array($frequency, ['daily', 'weekly', 'monthly'], true)) $errors[] = 'Select a valid frequency.';
+    if (!isLoggedIn()) $errors[] = 'Please sign in before subscribing.';
+    if (!$errors) {
+        try {
+            firestoreWrite('newsletter_subscribers', [
+                'userId' => (string)$_SESSION['user_id'], 'name' => $name,
+                'email' => $email, 'frequency' => $frequency,
+                'subscribedAt' => gmdate('Y-m-d\TH:i:s\Z')
+            ]);
+            $success = 'subscribed';
+        } catch (Throwable $e) { $errors[] = firebaseFriendlyError($e); }
     }
 }
+require_once '../includes/header.php';
 ?>
 
 <!-- NEWSLETTER HERO -->
