@@ -1,82 +1,35 @@
 <?php
-/**
- * ============================================================
- * REPENT† — Registration Page
- * File: pages/register.php
- *
- * PURPOSE: Allows new users to create an account.
- * - Validates all input fields server-side.
- * - Hashes the password using bcrypt before storing.
- * - Works in demo mode (no DB) for presentation purposes.
- * ============================================================
- */
-
-require_once '../includes/header.php';
-require_once '../includes/db.php';
-
-// If already logged in, redirect away
-if (isLoggedIn()) {
-    header("Location: ../index.php");
-    exit();
-}
-
-// ---------- Variables ----------
-$errors  = [];
+require_once '../includes/auth.php';
+require_once '../includes/firebase.php';
+if (isLoggedIn()) { header('Location: ../index.php'); exit(); }
+$errors = [];
 $success = '';
-
-// ---------- Handle form submission ----------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    // Collect and sanitise form inputs
     $fullname = trim($_POST['fullname'] ?? '');
-    $email    = trim(strtolower($_POST['email'] ?? ''));
+    $email = strtolower(trim($_POST['email'] ?? ''));
     $password = $_POST['password'] ?? '';
-    $confirm  = $_POST['confirm']  ?? '';
-
-    // ----- Validation rules -----
-    if (empty($fullname))                                    $errors[] = "Full name is required.";
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL))          $errors[] = "Please enter a valid email address.";
-    if (strlen($password) < 6)                               $errors[] = "Password must be at least 6 characters long.";
-    if ($password !== $confirm)                              $errors[] = "Passwords do not match.";
-
-    // Only proceed if no validation errors
-    if (empty($errors)) {
-
-        if ($conn) {
-            // ----- Real database registration -----
-
-            // Check if email is already registered
-            $check = $conn->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
-            $check->bind_param("s", $email);
-            $check->execute();
-            $check->store_result();
-
-            if ($check->num_rows > 0) {
-                $errors[] = "An account with this email already exists.";
-            } else {
-                // Hash the password securely using bcrypt
-                $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-                $role = 'customer'; // Default role for new users
-
-                // Insert new user into database
-                $stmt = $conn->prepare(
-                    "INSERT INTO users (fullname, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())"
-                );
-                $stmt->bind_param("ssss", $fullname, $email, $hashedPassword, $role);
-
-                if ($stmt->execute()) {
-                    $success = "Account created! <a href='login.php'>Click here to login</a>.";
-                } else {
-                    $errors[] = "Registration failed. Please try again.";
-                }
-            }
-
-        } else {
-            // ----- Demo mode (no database) -----
-            $success = "✓ Registration successful! (Demo Mode — no DB connected). <a href='login.php'>Login here</a>.";
+    $confirm = $_POST['confirm'] ?? '';
+    if ($fullname === '') $errors[] = 'Full name is required.';
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'Please enter a valid email address.';
+    if (strlen($password) < 6) $errors[] = 'Password must be at least 6 characters long.';
+    if ($password !== $confirm) $errors[] = 'Passwords do not match.';
+    if (!$errors) {
+        try {
+            $auth = firebaseAuth('register', $email, $password);
+            firebaseSession($auth, $fullname);
+            firestoreWrite('users', [
+                'uid' => $auth['localId'], 'fullname' => $fullname,
+                'email' => $email, 'role' => 'customer',
+                'createdAt' => gmdate('Y-m-d\TH:i:s\Z')
+            ], $auth['localId']);
+            $success = 'Account created in Firebase! <a href="../index.php">Continue to REPENT</a>.';
+        } catch (Throwable $e) {
+            $errors[] = firebaseFriendlyError($e);
+            session_unset(); // Avoid a signed-in session without a Firestore profile.
         }
     }
 }
+require_once '../includes/header.php';
 ?>
 
 <!-- ===== REGISTRATION FORM ===== -->

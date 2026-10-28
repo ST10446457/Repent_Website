@@ -20,7 +20,7 @@ if (session_status() === PHP_SESSION_NONE) {
  * Returns true if a user is currently logged in.
  */
 function isLoggedIn() {
-    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+    return !empty($_SESSION['user_id']) && !empty($_SESSION['firebase_id_token']);
 }
 
 /**
