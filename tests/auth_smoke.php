@@ -15,13 +15,14 @@ function check(bool $condition, string $description): void {
     echo "PASS: {$description}\n";
 }
 
-unset($_SESSION['user_id'], $_SESSION['role']);
+unset($_SESSION['user_id'], $_SESSION['firebase_id_token'], $_SESSION['role']);
 check(!isLoggedIn(), 'Guest is not logged in');
 check(!isAdmin(), 'Guest is not an administrator');
 
-$_SESSION['user_id'] = 42;
+$_SESSION['user_id'] = 'firebase-test-uid';
+$_SESSION['firebase_id_token'] = 'test-token';
 $_SESSION['role'] = 'customer';
-check(isLoggedIn(), 'Customer is logged in');
+check(isLoggedIn(), 'Firebase-backed customer session is logged in');
 check(!isAdmin(), 'Customer does not have administrator permissions');
 
 $_SESSION['role'] = 'admin';
