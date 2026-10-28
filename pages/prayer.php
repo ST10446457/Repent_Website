@@ -1,34 +1,30 @@
 <?php
-require_once '../includes/header.php';
-require_once '../includes/db.php';
-
-$success = '';
-$errors  = [];
-
+require_once '../includes/auth.php';
+require_once '../includes/firebase.php';
+$success = false;
+$errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name    = trim($_POST['name']    ?? '');
-    $email   = trim($_POST['email']   ?? '');
+    $name = trim($_POST['name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
     $subject = trim($_POST['subject'] ?? '');
-    $prayer  = trim($_POST['prayer']  ?? '');
-    $private = isset($_POST['private']) ? 1 : 0;
-
-    if (empty($name))   $errors[] = "Your name is required.";
-    if (empty($prayer)) $errors[] = "Please enter your prayer request.";
-
-    if (empty($errors)) {
-        if ($conn) {
-            $stmt = $conn->prepare("INSERT INTO prayer_requests (name, email, subject, prayer, is_private, submitted_at) VALUES (?,?,?,?,?,NOW())");
-            $stmt->bind_param("ssssi", $name, $email, $subject, $prayer, $private);
-            if ($stmt->execute()) {
-                $success = true;
-            } else {
-                $errors[] = "There was a problem submitting your request. Please try again.";
-            }
-        } else {
-            $success = true; // Demo mode
-        }
+    $prayer = trim($_POST['prayer'] ?? '');
+    $private = isset($_POST['private']);
+    if (!$name) $errors[] = 'Your name is required.';
+    if (!$prayer) $errors[] = 'Please enter your prayer request.';
+    if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'Please enter a valid email.';
+    if (!isLoggedIn()) $errors[] = 'Please sign in before submitting a prayer request.';
+    if (!$errors) {
+        try {
+            firestoreWrite('prayer_requests', [
+                'userId' => (string)$_SESSION['user_id'], 'name' => $name,
+                'email' => $email, 'subject' => $subject, 'prayer' => $prayer,
+                'isPrivate' => $private, 'submittedAt' => gmdate('Y-m-d\TH:i:s\Z')
+            ]);
+            $success = true;
+        } catch (Throwable $e) { $errors[] = firebaseFriendlyError($e); }
     }
 }
+require_once '../includes/header.php';
 ?>
 
 <!-- PAGE HERO -->
