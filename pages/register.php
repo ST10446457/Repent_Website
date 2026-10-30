@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $confirm = $_POST['confirm'] ?? '';
     if ($fullname === '') $errors[] = 'Full name is required.';
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'Please enter a valid email address.';
+    if (!repentValidEmail($email)) $errors[] = 'Please enter a valid email address.';
     if (strlen($password) < 6) $errors[] = 'Password must be at least 6 characters long.';
     if ($password !== $confirm) $errors[] = 'Passwords do not match.';
     if (!$errors) {
@@ -22,7 +22,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'email' => $email, 'role' => 'customer',
                 'createdAt' => gmdate('Y-m-d\TH:i:s\Z')
             ], $auth['localId']);
-            $success = 'Account created in Firebase! <a href="../index.php">Continue to REPENT</a>.';
+            firebaseSendVerification($auth['idToken']);
+            session_unset();
+            $success = 'Account created. Please check your email and click the verification link before signing in.';
         } catch (Throwable $e) {
             $errors[] = firebaseFriendlyError($e);
             session_unset(); // Avoid a signed-in session without a Firestore profile.
