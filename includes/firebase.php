@@ -105,3 +105,26 @@ function firebaseFriendlyError(Throwable $error): string {
     if (str_contains($code, 'PERMISSION_DENIED')) return 'Firebase permission denied. Check Firestore rules.';
     return 'Firebase error: ' . $code;
 }
+
+function repentValidEmail(string $input): bool {
+    $email = trim($input);
+    if (strlen($email) > 254 || !filter_var($email, FILTER_VALIDATE_EMAIL)) return false;
+    [$local, $domain] = explode('@', $email, 2);
+    if (strlen($local) > 64 || str_contains($local, '..')) return false;
+    $labels = explode('.', $domain);
+    if (count($labels) < 2) return false;
+    foreach ($labels as $label) {
+        if (!preg_match('/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i', $label)) return false;
+    }
+    return strlen(end($labels)) >= 2 && ctype_alpha(end($labels));
+}
+
+function firebaseAccountLookup(string $idToken): array {
+    $result = firebaseRequest('https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' . REPENT_FIREBASE_API_KEY, 'POST', ['idToken' => $idToken]);
+    return $result['users'][0] ?? [];
+}
+
+function firebaseSendVerification(string $idToken): void {
+    firebaseRequest('https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=' . REPENT_FIREBASE_API_KEY,
+        'POST', ['requestType' => 'VERIFY_EMAIL', 'idToken' => $idToken]);
+}
