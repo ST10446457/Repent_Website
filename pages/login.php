@@ -7,11 +7,16 @@ $redirect = $_GET['redirect'] ?? '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = strtolower(trim($_POST['email'] ?? ''));
     $password = $_POST['password'] ?? '';
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $password === '') {
+    if (!repentValidEmail($email) || $password === '') {
         $error = 'Enter a valid email and password.';
     } else {
         try {
             $auth = firebaseAuth('login', $email, $password);
+            $account = firebaseAccountLookup($auth['idToken']);
+            if (empty($account['emailVerified'])) {
+                firebaseSendVerification($auth['idToken']);
+                throw new RuntimeException('Please verify your email address before signing in. A verification link has been sent.');
+            }
             firebaseSession($auth);
             $doc = firebaseRequest(
                 'https://firestore.googleapis.com/v1/projects/repent-48fda/databases/(default)/documents/users/' . rawurlencode($auth['localId']),
