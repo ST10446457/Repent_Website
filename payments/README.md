@@ -45,3 +45,17 @@ This module is a **sandbox-only** proof of concept. It is not deployed or paymen
 - This code has not yet completed CI, deployed sandbox validation, or real payment testing.
 
 See https://developers.payfast.co.za/documentation/ and https://support.payfast.help/ for PayFast integration requirements.
+
+## 2026-11-16 security review and deployment checklist
+The callback origin check was expanded to include the PayFast ITN IP ranges and published provider hostnames from [PayFast's network documentation](https://developers.payfast.co.za/documentation/). Behind Firebase/Cloud Run proxies the IP visible as `req.ip` must be validated in actual sandbox traffic; **do not bypass this check to force a successful test**. The sandbox may fail closed until routing is verified.
+
+### Before merging into a release branch
+- Verify the website checkout and Android Gradle build both pass.
+- Confirm environment variables and Firebase secrets are correctly injected into the deployed Cloud Function.
+- Deploy secure Firestore rules: customers must not write `paymentStatus`, `paidAt` or `payfastPaymentId`; disallow all client access to `payment_sessions` and `payfast_transactions`.
+- Confirm Firestore `products` prices match the website and Android displayed totals before accepting payment.
+- Confirm signature validation against actual PayFast sandbox payloads, server-to-server validation endpoint, amount, IP ranges, merchant ID and idempotent transaction behaviour.
+- Test a PayFast wallet sandbox payment, cancellation, expired checkout session and repeated/forged callback.
+- Enable live PayFast processing only after separate production security and operational review.
+
+**Current state:** Code is on a draft review branch; no PayFast backend deployment, live payment, or end-to-end test has been confirmed.
