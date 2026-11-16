@@ -1,356 +1,73 @@
-# REPEN† — Faith-Based Clothing & Spiritual Growth Web Application
-
-REPEN† is a full-stack **PHP & MySQL web application** and **e-commerce platform** created for a Christian apparel brand and ministry based in South Africa.
-
-The platform combines an online faith-inspired clothing store (t-shirts, hoodies, crewnecks, and caps) with digital spiritual growth features such as daily devotionals, prayer requests, and newsletter subscriptions.
-
----
-
-# 🚀 Features
-
-## 🛍️ E-Commerce & Storefront
-
-### Dynamic Product Catalogue
-- Browse Christian apparel products including:
-  - T-Shirts
-  - Hoodies
-  - Crewnecks
-  - Caps
-- South African Rand (ZAR - R) pricing support.
-
-### Interactive Shopping Cart
-- Add and remove products.
-- Adjust product quantities.
-- Automatic subtotal calculations.
-- Free shipping progress indicator.
-- Free delivery available for orders over **R800**.
-
-### Checkout & Order Processing
-- Multi-step checkout process.
-- Supports:
-  - Instant EFT payments (OZOW/PayFast workflows)
-  - Credit/Debit card payment flows
-- Includes transactional fallback support for demonstration environments.
-
----
-
-# 📖 Spiritual Growth & Ministry
-
-## Daily Devotionals
-Scripture-based devotionals with categories including:
-
-- Transformation
-- Repentance
-- Peace
-- Strength
-- Identity
-- Mission
-- Faith
-
-## Prayer Request Portal
-Allows users to:
-- Submit prayer requests.
-- Choose public or private requests.
-- Send requests to the prayer team.
-
-## Community Newsletter
-Subscription system supporting:
-- Daily newsletters
-- Weekly newsletters
-- Monthly newsletters
-
-Includes user preference tracking.
-
----
-
-# 🛡️ Authentication & Administration
-
-## Role-Based Access Control (RBAC)
-
-The system supports multiple user roles:
-
-### Customer
-- Browse products.
-- Manage shopping cart.
-- Place orders.
-- Submit prayer requests.
-- Subscribe to newsletters.
-
-### Administrator
-- Manage products.
-- View orders.
-- Monitor inventory.
-- Manage prayer requests.
-- View newsletter subscribers.
-
----
-
-## Admin Dashboard
-
-The administration panel provides:
-
-- Sales and order statistics.
-- Order tracking.
-- Inventory management.
-- Prayer request management.
-- Subscriber management.
-
----
-
-## Dual Operating Modes
-
-REPENT† can operate in two modes:
-
-### Live Database Mode
-- Uses MySQL/MariaDB.
-- Stores real users, products, orders, and requests.
-
-### Demo Mode
-- Runs without database configuration.
-- Uses mock data for presentations and demonstrations.
-
----
-
-# 🛠️ Technology Stack
-
-## Backend
-- PHP 8.x
-
-## Database
-- MySQL / MariaDB
-
-Database Name:
-
-```
-repent_db
-```
-
-## Frontend
-- HTML5
-- CSS3
-- Responsive layouts using:
-  - CSS Variables
-  - Flexbox
-  - CSS Grid
-- Vanilla JavaScript
-
-## Graphics
-- Inline SVG icons
-- Custom CSS logo rendering
-
-## Security
-Implemented security features:
-
-- Password hashing using bcrypt.
-- Prepared SQL statements to prevent SQL injection.
-- Session-based authentication guards.
-- Secure transaction handling.
-
----
-
-# 📁 Repository Structure
-
-```
-REPENT/
-│
-├── assets/
-│   └── images/              
-│       └── Product images and brand visuals
-│
-├── includes/
-│   ├── header.php           
-│   ├── footer.php            
-│   ├── db.php               
-│   └── logo.php             
-│
-├── pages/
-│   ├── shop.php             
-│   ├── cart.php             
-│   ├── checkout.php         
-│   ├── devotional.php       
-│   ├── prayer.php           
-│   ├── newsletter.php       
-│   ├── login.php            
-│   ├── register.php         
-│   ├── logout.php           
-│   └── admin.php            
-│
-├── index.php                
-│
-└── repent_database.sql      
-```
-
----
-
-# ⚡ Installation & Setup
-
-## Requirements
-
-Before running the application, install:
-
-- PHP 8.0 or higher
-- MySQL / MariaDB
-- Local web server environment:
-  - XAMPP
-  - WAMP
-  - MAMP
-  - Laragon
-  - Apache/Nginx
-
----
-
-# Option 1: Run Using XAMPP/WAMP
-
-## 1. Clone or Download Repository
-
-Place the project inside your server directory:
-
-### XAMPP
-
-```
-C:/xampp/htdocs/repent-clothing
-```
-
-### WAMP
-
-```
-C:/wamp64/www/repent-clothing
-```
-
-### MAMP
-
-```
-/Applications/MAMP/htdocs/repent-clothing
-```
-
----
-
-## 2. Configure Database
-
-1. Start Apache and MySQL.
-2. Open:
-
-```
-http://localhost/phpmyadmin
-```
-
-3. Create a database:
-
-```
-repent_db
-```
-
-4. Import:
-
-```
-repent_database.sql
-```
-
----
-
-## 3. Configure Database Connection
-
-Open:
-
-```
-includes/db.php
-```
-
-Update your database credentials:
-
-```php
-$host = 'localhost';
-$user = 'root';
-$pass = '';
-$dbname = 'repent_db';
-```
-
----
-
-## 4. Launch Application
-
-Open:
-
-```
-http://localhost/repent-clothing/index.php
-```
-
----
-
-# Option 2: Run Using PHP Built-In Server
-
-For quick demonstration without MySQL setup:
-
-Navigate to the project folder:
+# REPENT† — Website
+
+Faith-based apparel storefront and customer platform, built with PHP, HTML, CSS, JavaScript and **Firebase Authentication / Cloud Firestore**. Uses the same Firebase project as the Android app: `repent-48fda`.
+
+## Current capabilities
+- Browse apparel, cart, shipping and checkout screens.
+- Register / sign in via Firebase email/password; email verification required.
+- Create customer order requests and access the shared Firestore project.
+- Submit prayer requests and newsletter subscriptions.
+- **PayFast hosted sandbox checkout (review branch):** card selection calls a shared Firebase HTTPS payment function. No payment is confirmed just because the customer returns to the website.
+- Existing `pages/admin.php` still shows **sample dashboard values**, not live Firebase order statistics. Do not use it to approve actual fulfilment.
+
+## Local website setup
+1. Install PHP 8+ with cURL, or XAMPP (start Apache).
+2. Clone or extract this repository into `C:\xampp\htdocs\Repent_Website`.
+3. Enable Email/Password sign-in in Firebase project `repent-48fda`; deploy appropriate Firestore rules.
+4. Visit `http://localhost/Repent_Website/`. MySQL is **not required** for the Firebase customer authentication/checkout flow.
+5. Use a verified Firebase email/password test account.
+
+## PayFast sandbox (NOT deployed)
+The **source code** for the shared backend is in `payments/functions/index.js` and `payments/README.md`.
+Both website and Android should use the *same* deployed Firebase HTTPS function.
+
+**Required:** Firebase project with Cloud Functions billing, Firebase CLI, PayFast sandbox account, HTTPS function URL, trusted Firestore product prices, and verified Firebase accounts.
 
 ```bash
-cd path/to/repent-clothing
+npm --prefix payments/functions install
+firebase login
+firebase functions:secrets:set PAYFAST_MERCHANT_ID --project repent-48fda
+firebase functions:secrets:set PAYFAST_MERCHANT_KEY --project repent-48fda
+firebase functions:secrets:set PAYFAST_PASSPHRASE --project repent-48fda
 ```
 
-Start PHP server:
+Create an **untracked** `payments/functions/.env.repent-48fda` file with the expected public HTTPS function URL, such as:
+
+```dotenv
+PAYMENT_PUBLIC_URL=https://europe-west1-repent-48fda.cloudfunctions.net/repentPayfast
+```
+
+Deploy only after reviewing and testing security rules, HTTPS proxy handling and the PayFast ITN validation:
 
 ```bash
-php -S localhost:8000
+firebase deploy --only functions:repentPayfast --project repent-48fda
 ```
 
-Open:
+Set the website server environment variable `REPENT_PAYMENT_API_URL` to the deployed HTTPS function URL, and restart the web server. **Never add merchant secrets to PHP pages, Android code or GitHub.**
 
-```
-http://localhost:8000
-```
+### Checkout behaviour
+- **Card**: creates a pending Firestore order using trusted Firestore catalogue prices, then opens PayFast's sandbox-hosted checkout. Only a validated PayFast ITN can set `paymentStatus=paid`.
+- **EFT**: legacy request-only workflow: creates a pending order; does not process an electronic payment.
+- Returning from the payment browser does **not** mean payment succeeded.
+- The website catalogue still contains static content; reconcile catalogue IDs/prices with Firestore before processing orders.
 
-The application will automatically switch to **Demo Mode** when no database connection is available.
+## Firestore order schema
+`orders/{id}`: `userId`, `orderNumber`, `items`, `subtotal`, `shipping`, `total`, `shippingAddress`, `city`, `postalCode`, `phone`, `paymentMethod`, `status`, `createdAt`; backend-created card orders additionally have `paymentStatus`, `currency`, and later `payfastPaymentId` / `paidAt` only after verification.
 
----
+Customers must never be allowed to set or modify server-only payment fields. Deny client access to `payment_sessions` and `payfast_transactions`. Firestore Admin SDK on the deployed backend is responsible for verified payment updates.
 
-# 🔑 Demo Accounts
+## Tests and status
+- Website Azure pipeline checks PHP syntax and selected auth smoke tests; this is **not** live payment verification.
+- PayFast sandbox backend has **not** been deployed and there is **no verified test transaction**.
+- Test paid, cancelled, failed, duplicate, tampered-amount and invalid-source/signature notifications before enabling payment processing.
+- Android integration is documented in [the companion repository](https://github.com/ST10446457/Repent_MobileApplication).
 
-## Administrator Account
+## Project files
+- `pages/checkout.php` — PHP checkout
+- `includes/firebase.php` — Firebase REST helpers
+- `payments/functions/index.js` — secure shared server endpoint (sandbox)
+- `payments/README.md` — setup, limitations and operational checklist
+- `FIREBASE_SETUP.md` — legacy Firebase migration notes
+- `repent_database.sql` and `includes/db.php` — legacy MySQL fallback/reference; not primary Firebase authentication
 
-| Role | Email | Password |
-|---|---|---|
-| Administrator | admin@repent.co.za | admin123 |
-
-Access:
-
-```
-/pages/admin.php
-```
-
-Permissions:
-- Full admin dashboard access
-- Product management
-- Order management
-- User management
-
----
-
-## Customer Account
-
-| Role | Email | Password |
-|---|---|---|
-| Customer | user@repent.co.za | user123 |
-
-Permissions:
-- Shopping functionality
-- Checkout process
-- Prayer requests
-- Newsletter subscription
-
----
-
-# 👤 Project Information
-
-**Platform:**  
-REPENT† Faith-Based Clothing & Ministry
-
-**Lead Developer & Data Administrator:**  
-Unarine
-
----
-
-# 📄 License
-
-This project is licensed under the **MIT License**.
-
-You are free to use, modify, and distribute this project according to the MIT License terms.
+**Security:** never commit merchant secrets, Firebase service-account credentials or real card data. This is a development prototype and not yet ready to charge customers.

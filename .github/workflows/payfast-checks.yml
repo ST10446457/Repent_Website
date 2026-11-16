@@ -1,0 +1,17 @@
+name: PayFast sandbox source checks
+on:
+  push:
+    branches: [main, 'feat/payfast-sandbox-checkout-20261114']
+  pull_request:
+  workflow_dispatch:
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Cloud Function JavaScript syntax
+        run: node --check payments/functions/index.js
+      - name: Check PHP checkout syntax
+        run: php -l pages/checkout.php
+      - name: Check Firebase helper syntax
+        run: php -l includes/firebase.php

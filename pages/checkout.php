@@ -32,6 +32,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ];
             }
             $orderNumber = random_int(100000000, 999999999);
+            if ($payment === 'card') {
+                // Card payments use trusted backend prices and a PayFast-hosted checkout.
+                // A browser return or this redirect never marks an order as paid.
+                $base = rtrim((string)getenv('REPENT_PAYMENT_API_URL'), '/');
+                if (!preg_match('~^https://[a-z0-9.-]+(?:/[a-z0-9/_-]*)?$~i', $base)) {
+                    throw new RuntimeException('PayFast checkout backend is not configured.');
+                }
+                $checkout = firebaseRequest($base . '/create', 'POST', [
+                    'items' => array_map(static fn($item) => [
+                        'productId' => (int)$item['productId'],
+                        'quantity' => (int)$item['quantity'],
+                    ], $items),
+                    'address' => $address, 'city' => $city,
+                    'postalCode' => $zip, 'phone' => $phone,
+                ], firebaseToken());
+                $target = $checkout['checkoutUrl'] ?? '';
+                if (!is_string($target) || !str_starts_with($target, $base . '/pay/')) {
+                    throw new RuntimeException('Invalid payment checkout URL.');
+                }
+                header('Location: ' . $target, true, 303);
+                exit();
+            }
             firestoreWrite('orders', [
                 'userId' => (string)$_SESSION['user_id'],
                 'orderNumber' => $orderNumber,
@@ -128,13 +150,13 @@ require_once '../includes/header.php';
                         <label style="display: flex; align-items: center; background: var(--white); padding: 16px; border-radius: var(--radius); cursor: pointer; border: 1px solid var(--cream);">
                             <input type="radio" name="payment_method" value="card" style="margin-right: 12px; accent-color: var(--gold);">
                             <div>
-                                <strong style="font-size: 14px; display: block;">Credit / Debit Card</strong>
-                                <span style="font-size: 12px; color: var(--gray);">Visa and Mastercard protected via 3D Secure.</span>
+                                <strong style="font-size: 14px; display: block;">Credit / Debit Card (PayFast Sandbox)</strong>
+                                <span style="font-size: 12px; color: var(--gray);">Simulated sandbox checkout only; no real card will be charged.</span>
                             </div>
                         </label>
                     </div>
 
-                    <button type="submit" class="btn btn-gold btn-full" style="padding: 16px;">Place Order (R<?= number_format($grandTotal, 2) ?>)</button>
+                    <button type="submit" class="btn btn-gold btn-full" style="padding: 16px;">Continue Checkout (R<?= number_format($grandTotal, 2) ?>)</button>
                 </form>
             </div>
 

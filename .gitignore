@@ -1,0 +1,3 @@
+payments/functions/.env*
+!payments/functions/.env.example
+payments/functions/node_modules/
