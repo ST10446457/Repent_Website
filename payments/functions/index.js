@@ -92,10 +92,25 @@ app.get('/pay/:token',async(req,res)=>{
   return res.status(200).type('html').send('<!doctype html><meta charset="utf-8"><h2>Connecting to PayFast sandbox</h2><form id="pf" action="'+pf+'/eng/process" method="post">'+fields+'<button>Continue</button></form><script>document.getElementById("pf").submit()</script>');
  }catch(e){console.error('PayFast redirect:',e.message);return res.status(500).send('Checkout unavailable');}
 });
+// PayFast publishes allowed ITN networks; check these plus its official domains.
+// This check is deliberately fail-closed if proxy routing hides the true sender.
+const net=require('node:net');
+const ranges=[
+ ['197.97.145.144',28],['41.74.179.192',27],
+ ['102.216.36.0',28],['102.216.36.128',28],['144.126.193.139',32]
+];
+function ipNumber(ip){return ip.split('.').reduce((n,x)=>((n<<8)>>>0)+(Number(x)>>>0),0)>>>0;}
+function inRange(ip,block,bits){
+ if(net.isIP(ip)!==4)return false;
+ const mask=(0xffffffff<<(32-bits))>>>0;
+ return (ipNumber(ip)&mask)===(ipNumber(block)&mask);
+}
 async function sourceValid(req){
  const ip=String(req.ip||'').replace(/^::ffff:/,'');
- const hosts=['sandbox.payfast.co.za'];
- const results=await Promise.all(hosts.map(host=>dns.lookup(host,{all:true})));
+ if(net.isIP(ip)!==4)return false;
+ if(ranges.some(([address,bits])=>inRange(ip,address,bits)))return true;
+ const hosts=['www.payfast.co.za','w1w.payfast.co.za','w2w.payfast.co.za','sandbox.payfast.co.za'];
+ const results=await Promise.all(hosts.map(host=>dns.lookup(host,{all:true}).catch(()=>[])));
  return results.flat().some(x=>x.address===ip);
 }
 app.post('/notify',express.urlencoded({extended:false,limit:'12kb'}),async(req,res)=>{
